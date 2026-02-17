@@ -1,94 +1,110 @@
-import turtle
+import pygame
 import random
-import time
+import sys
 
-# Setup window
-wn = turtle.Screen()
-wn.title("computer graffics Project")
-wn.bgcolor("black")
-wn.setup(width=600, height=600)
-wn.tracer(0)
+# Initialize pygame
+pygame.init()
 
-colors = ["red", "blue", "green", "yellow"]
+# Screen setup
+WIDTH, HEIGHT = 600, 600
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Color Catcher - Unique BSc IT Project")
+
+clock = pygame.time.Clock()
+
+# Colors
+COLOR_LIST = {
+    "red": (255, 0, 0),
+    "blue": (0, 0, 255),
+    "green": (0, 255, 0),
+    "yellow": (255, 255, 0)
+}
+
+color_names = list(COLOR_LIST.keys())
 
 # Paddle
-paddle = turtle.Turtle()
-paddle.shape("square")
-paddle.shapesize(stretch_wid=1, stretch_len=5)
-paddle.penup()
-paddle.goto(0, -250)
-paddle.color("red")
+paddle_width = 120
+paddle_height = 20
+paddle_x = WIDTH // 2 - paddle_width // 2
+paddle_y = HEIGHT - 50
+paddle_color_name = "red"
+paddle_speed = 30
 
 # Ball
-ball = turtle.Turtle()
-ball.shape("circle")
-ball.penup()
-ball.goto(0, 250)
-ball.color(random.choice(colors))
-ball.dy = -3
+ball_radius = 15
+ball_x = random.randint(50, WIDTH - 50)
+ball_y = 50
+ball_color_name = random.choice(color_names)
+ball_speed = 3
 
 # Score
 score = 0
-score_display = turtle.Turtle()
-score_display.hideturtle()
-score_display.color("white")
-score_display.penup()
-score_display.goto(0, 260)
-score_display.write("Score: 0", align="center", font=("Arial", 16, "bold"))
-
-# Paddle movement
-def move_left():
-    x = paddle.xcor()
-    if x > -250:
-        paddle.setx(x - 30)
-
-def move_right():
-    x = paddle.xcor()
-    if x < 250:
-        paddle.setx(x + 30)
-
-# Change paddle color
-def change_color():
-    new_color = random.choice(colors)
-    paddle.color(new_color)
-
-wn.listen()
-wn.onkeypress(move_left, "Left")
-wn.onkeypress(move_right, "Right")
-wn.onkeypress(change_color, "space")
-
-# Game loop
+font = pygame.font.SysFont("Arial", 28)
 game_over = False
 
-while not game_over:
-    wn.update()
-    time.sleep(0.01)
+def reset_ball():
+    global ball_x, ball_y, ball_color_name
+    ball_x = random.randint(50, WIDTH - 50)
+    ball_y = 50
+    ball_color_name = random.choice(color_names)
 
-    ball.sety(ball.ycor() + ball.dy)
+# Game loop
+running = True
+while running:
+    clock.tick(60)
+    screen.fill((0, 0, 0))
 
-    # Ball hits bottom
-    if ball.ycor() < -300:
-        ball.goto(random.randint(-250, 250), 250)
-        ball.color(random.choice(colors))
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
 
-    # Catch detection
-    if (ball.ycor() < -230 and ball.ycor() > -260) and \
-       (paddle.xcor() - 60 < ball.xcor() < paddle.xcor() + 60):
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_LEFT and paddle_x > 0:
+                paddle_x -= paddle_speed
+            if event.key == pygame.K_RIGHT and paddle_x < WIDTH - paddle_width:
+                paddle_x += paddle_speed
+            if event.key == pygame.K_SPACE:
+                paddle_color_name = random.choice(color_names)
 
-        if ball.color()[0] == paddle.color()[0]:
-            score += 1
-            ball.dy -= 0.2  # increase difficulty
-            score_display.clear()
-            score_display.write(f"Score: {score}", align="center",
-                                font=("Arial", 16, "bold"))
-            ball.goto(random.randint(-250, 250), 250)
-            ball.color(random.choice(colors))
-        else:
-            game_over = True
+    if not game_over:
+        # Move ball
+        ball_y += ball_speed
 
-# Game Over message
-score_display.goto(0, 0)
-score_display.write("GAME OVER", align="center",
-                    font=("Arial", 24, "bold"))
+        # Ball hits bottom
+        if ball_y > HEIGHT:
+            reset_ball()
 
-wn.mainloop()
+        # Collision detection
+        if (paddle_y < ball_y + ball_radius < paddle_y + paddle_height and
+            paddle_x < ball_x < paddle_x + paddle_width):
+
+            if ball_color_name == paddle_color_name:
+                score += 1
+                ball_speed += 0.2  # increase difficulty
+                reset_ball()
+            else:
+                game_over = True
+
+    # Draw paddle
+    pygame.draw.rect(screen, COLOR_LIST[paddle_color_name],
+                     (paddle_x, paddle_y, paddle_width, paddle_height))
+
+    # Draw ball
+    pygame.draw.circle(screen, COLOR_LIST[ball_color_name],
+                       (ball_x, ball_y), ball_radius)
+
+    # Draw score
+    score_text = font.render(f"Score: {score}", True, (255, 255, 255))
+    screen.blit(score_text, (WIDTH // 2 - score_text.get_width() // 2, 10))
+
+    # Game Over
+    if game_over:
+        game_over_text = font.render("GAME OVER", True, (255, 255, 255))
+        screen.blit(game_over_text,
+                    (WIDTH // 2 - game_over_text.get_width() // 2,
+                     HEIGHT // 2 - 20))
+
+    pygame.display.update()
+
+pygame.quit()
+sys.exit()
